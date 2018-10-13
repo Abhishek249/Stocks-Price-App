@@ -1,0 +1,188 @@
+<!--
+Stock Quotes App
+Author: Abhishek Jain
+email: abhishek2k49@gmail.com
+Last modified: May 19,2018
+-->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Stocks Price App</title>
+    <script src="https://code.jquery.com/jquery-3.1.0.js"></script>
+    <script src="https://code.jquery.com/jquery.min.js"></script>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <script src="https://code.highcharts.com/modules/exporting.js"></script>
+    <script src="https://code.highcharts.com/modules/export-data.js"></script>
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="page-header">
+            <h3>Stocks Price App</h3>
+        </div>
+
+        <div id="stockformcontainer " class="row">
+            <div class="col-md-6">
+                <input id="stockItem" class="form-control" type="text" placeholder="Stock Symbol">
+
+            </div>
+            <div class="col-md-2">
+                <button id="btnAddStock" class="btn btn-primary">Add</button>
+            </div>
+
+        </div>
+
+        <div class="row">
+            <!--stock list container-->
+            <div id="stocklistcontainer" class="col-md-6">
+                <div class="panel-heading">
+                    <h3 class="panel-title">Stocks List</h3>
+                </div>
+                <div class="panel panel-body">
+                    <ul id="stocklist" class="list-group"></ul>
+                </div>
+            </div>
+
+            <!--graph container-->
+            <div id="graphcontainer" class="col-md-6"></div>
+        </div>
+    </div>
+
+    <script>
+        $("document").ready(function () {});
+
+        //***************charting starts here******************************************
+        function drawChart() {
+            Highcharts.chart('graphcontainer', {
+                chart: {
+                    type: 'bar'
+                },
+                title: {
+                    text: 'Stock Prices'
+                },
+                xAxis: {
+                    categories: stockArr,
+                    title: {
+                        text: null
+                    }
+                },
+                yAxis: {
+                    min: 0,
+                    title: {
+                        text: 'Price(USD)',
+                        align: 'high'
+                    },
+                    labels: {
+                        overflow: 'justify'
+                    }
+                },
+                tooltip: {
+                    valueSuffix: ' USD'
+                },
+                plotOptions: {
+                    bar: {
+                        dataLabels: {
+                            enabled: true
+                        }
+                    }
+                },
+                legend: {
+                    layout: 'vertical',
+                    align: 'right',
+                    verticalAlign: 'top',
+                    x: -40,
+                    y: 80,
+                    floating: true,
+                    borderWidth: 1,
+                    backgroundColor: ((Highcharts.theme && Highcharts.theme.legendBackgroundColor) || '#FFFFFF'),
+                    shadow: true
+                },
+                credits: {
+                    enabled: false
+                },
+                series: [{
+                    name: ' Prices',
+                    data: symbolspriceArr
+                }]
+            });
+        }
+        //***************charting ends here******************************************
+
+
+        let stockArr = []; //maintain a global array for stock symbols
+        let priceArr = [];
+        let symbolsArr = [];
+        var symbolspriceArr = [];
+
+        $("#btnAddStock").click(function () {
+            addStockItem();
+        });
+
+        //**********handling Enter Key press after adding stock to input box
+        $('#stockItem').on("keypress", function (e) {
+            if (e.keyCode == 13) {
+                e.preventDefault();
+                addStockItem();
+            }
+        });
+
+        //******* function checks for duplicate stock symbols, adds stock to UI list,calls loadStockData to load stock data
+        function addStockItem() {
+            var stockitem = $("#stockItem").val().trim().toUpperCase();
+
+            //if stockSymbol is already not in array, add it,fetch its data and on success,add it to UI list
+            if (stockArr.indexOf(stockitem) == (-1)) {
+                stockArr.push(stockitem);
+
+                let uistockitem = "<li class='list-group-item' id='" + stockitem + "'>" + stockitem + "</li>"
+                $("#stocklist").append(uistockitem);
+            }
+            symbolsArr = stockArr.join(','); //create a comma separated array for URL embedding
+            if (symbolsArr.length > 0) {
+                loadStockData();
+            }
+            resetForm();
+        }
+
+        //************function to fetch stock data, uses "fetch API" of JS and promises***************
+        function loadStockData() {
+            if (stockArr.length > 0) {
+                //prepare the url for Batch requests as mentioned in IEX API syntax
+                let url = "https://api.iextrading.com/1.0/stock/market/batch?symbols=" + symbolsArr +
+                    "&types=price&last=5";
+                fetch(url)
+                    .then((resp) => resp.json())
+                    .then(function (data) {
+                        // debugger;
+                        for (var x in data) {
+                            priceArr.push(data[x].price);
+                            var mset = new Set(priceArr);
+                            symbolspriceArr = Array.from(mset);
+                        }
+                        drawChart();
+                    })
+                    .catch(function (error) {
+                        // debugger;
+                        console.log("Error occured in fetch.");
+                    });
+            }
+
+        }
+
+
+        //**************function to reset input box******************************************************
+        function resetForm() {
+            $("#stockItem").val('');
+        }
+
+        //*********************** forces to load latest stock data every 5 seconds***********************
+        setInterval(loadStockData, 5000);
+    </script>
+</body>
+
+</html>
